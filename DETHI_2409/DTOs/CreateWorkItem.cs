@@ -6,7 +6,6 @@ namespace DETHI_2409.DTOs
     public class CreateWorkItem
     {
 
-        public string Code { get; set; }
         [StringLength(200, MinimumLength = 5)]
         public string Title { get; set; }
 

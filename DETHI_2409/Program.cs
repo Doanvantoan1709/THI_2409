@@ -20,6 +20,7 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddTransient<IWorkitemService, WorkitemService>();
 builder.Services.AddTransient<IHealthService, HealthService>();
+builder.Services.AddTransient<IReportService, ReportService>();
 
 var app = builder.Build();
 

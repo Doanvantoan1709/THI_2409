@@ -22,17 +22,19 @@ namespace DETHI_2409.Controllers
         public ActionResult<bool> HealthCheckDB()
         {
             var hc = _healthService.HealthCheckDB();
-            var resError = new ResponseHealth<bool>();
             if (hc == false)
             {
-                resError.Status = 503;
-                resError.Message = "unavailable";
-                return Conflict(resError);
+                return NotFound(new
+                {
+                    Status = 503,
+                    Message = "unavailable"
+                });
             }
-
-            resError.Status = 200;
-            resError.Message = "available";
-            return Ok(resError);
+            return Ok(new
+            {
+                Status = 200,
+                Message = "Available"
+            });
         }
     }
 }

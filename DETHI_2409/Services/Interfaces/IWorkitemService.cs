@@ -12,5 +12,7 @@ namespace DETHI_2409.Services.Interfaces
         Task DeleteWorkItemAsync(int id);
 
         Task CreateWorkItemAsync(CreateWorkItem createWorkItem);
+
+        Task AssignTasks(int id, ParameterItem parameterItem);
     }
 }

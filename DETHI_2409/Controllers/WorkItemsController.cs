@@ -68,16 +68,56 @@ namespace DETHI_2409.Controllers
             }
         }
 
-        [HttpPut("{id}")]
-        public async Task DeleteWorkItemAsync(int id)
+        [HttpDelete("{id}")]
+        public async Task<ActionResult> DeleteWorkItemAsync(int id)
         {
             try
             {
                 await _workitemService.DeleteWorkItemAsync(id);
+
+                return Ok(new
+                {
+                    message = "Xoa thanh cong"
+                });
             }
             catch(Exception ex)
             {
-                BadRequest(ex.Message);
+                return Conflict(ex.Message);
+            }
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> CreateWorkItemAsync(CreateWorkItem createWorkItem)
+        {
+            try
+            {
+                await _workitemService.CreateWorkItemAsync(createWorkItem);
+
+                return Ok(new
+                {
+                    message = "Tao thanh cong"
+                });
+
+            }catch(Exception ex)
+            {
+                return Conflict(ex.Message);
+            }
+        }
+
+        [HttpPatch("{id}/assignee")]
+        public async Task<ActionResult> AssignTasks(int id, ParameterItem parameterItem)
+        {
+            try
+            {
+                await _workitemService.AssignTasks(id, parameterItem);
+                return Ok(new
+                {
+                    message = "Phân công hoàn tất"
+                });
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
             }
         }
     }

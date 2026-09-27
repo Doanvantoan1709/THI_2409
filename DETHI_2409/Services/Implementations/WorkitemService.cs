@@ -144,31 +144,23 @@ namespace DETHI_2409.Services.Implementations
 
         public async Task DeleteWorkItemAsync(int id)
         {
-            var findWordItem = await _context.WorkItems.FirstOrDefaultAsync(x => x.Id == id);
+            var findWordItem = await _context.WorkItems
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (findWordItem.IsDeleted == true) throw new Exception($"Work Item co Id: {id} da bi xoa truoc do");
+
             if (findWordItem == null) throw new Exception($"Id: {id} khong ton tai");
 
-            using var transaction = _context.Database.BeginTransaction();
-
-            try
+            if (findWordItem.Status != EnumName.Todo.ToString() && findWordItem.Status != EnumName.Cancelled.ToString())
             {
-                if (findWordItem.Status != EnumName.Todo.ToString() && findWordItem.Status != EnumName.Cancelled.ToString())
-                {
-                    throw new Exception($"Chi item Todo - Cancelled moi duoc phep xoa");
-                }
-
-                findWordItem.IsDeleted = true;
-                findWordItem.DeletedAt = DateTime.UtcNow;
-                findWordItem.UpdatedAt = DateTime.UtcNow;
-
-                await _context.SaveChangesAsync();
-
-                await transaction.CommitAsync();
+                throw new Exception($"Chi item Todo - Cancelled moi duoc phep xoa");
             }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                throw new Exception(ex.Message);
-            }
+
+            findWordItem.IsDeleted = true;
+            findWordItem.DeletedAt = DateTime.UtcNow;
+            findWordItem.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
         }
 
         public async Task CreateWorkItemAsync(CreateWorkItem createWorkItem)
@@ -178,80 +170,180 @@ namespace DETHI_2409.Services.Implementations
 
             try
             {
+                var getprojectId = await _context.Projects
+                    .Where(x => x.Code == createWorkItem.ProjectCode)
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync();
+
+                if (getprojectId == 0) throw new Exception($"ProjectCode: {createWorkItem.ProjectCode} khong ton tai");
+
+                var labelNames = createWorkItem.Labels?
+                    .Select(x => x.Trim().ToLower())
+                    .Distinct()
+                    .ToArray() ?? [];
+
+                var labels = await _context.Labels
+                    .Where(x => labelNames.Contains(x.Name.ToLower()))
+                    .ToListAsync();
+
+                var now = DateTime.UtcNow;
+
+                WorkItem workItem = new WorkItem()
+                {
+                    Code = "",
+                    Title = createWorkItem.Title,
+                    Description = createWorkItem.Description,
+                    Status = createWorkItem.Status,
+                    Priority = createWorkItem.Priority,
+                    ProjectId = getprojectId,
+                    AssigneeId = createWorkItem.AssigneeId,
+                    DueAt = createWorkItem.DueAt,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    CompletedAt = null,
+                    IsDeleted = false,
+                    DeletedAt = null,
+                    Labels = labels
+                };
+
+                await _context.WorkItems.AddAsync(workItem);
+                await _context.SaveChangesAsync(); // sinh Id
+
+                workItem.Code = $"WI-{now.Year}-{workItem.Id:D6}"; // lay Id
+
                 await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync();
             }
-            catch (Exception ex)
+            catch
             {
                 await transaction.RollbackAsync();
-                throw new Exception(ex.Message);
+                throw;
             }
         }
 
         public async Task<WorkItemDetailDto> GetWorkItemDetailAsync(int id)
         {
-            var findWordItem = await _context.WorkItems.FirstOrDefaultAsync(x => x.Id == id);
-            if (findWordItem == null) throw new Exception($"Id: {id} khong ton tai");
+            var res = await _context.WorkItems
+                .AsNoTracking()
+                .Where(x => x.Id == id)
+                .Select(
+                    x => new WorkItemDetailDto()
+                    {
+                        Item = new WorkItemDetail()
+                        {
+                            Id = x.Id,
+                            Code = x.Code,
+                            Title = x.Title,
+                            Description = x.Description,
+                            Status = x.Status,
+                            Priority = x.Priority,
+                            DueAt = x.DueAt,
+                            CreatedAt = x.CreatedAt,
+                            UpdatedAt = x.UpdatedAt,
+                            CompletedAt = x.CompletedAt
+                        },
 
-            var item = new WorkItemDetail()
+                        Project = x.Project == null
+                            ? null
+                            : new ProjectDetail()
+                            {
+                                Code = x.Project.Code,
+                                Name = x.Project.Name
+                            },
+
+                        Assignee = x.Assignee == null
+                            ? null
+                            : new DeveloperDetail()
+                            {
+                                Id = x.Assignee.Id,
+                                FullName = x.Assignee.FullName,
+                                Code = x.Assignee.Code
+                            },
+
+                         Labels = x.Labels
+                            .OrderBy(l => l.Name)
+                            .Select(l => l.Name)
+                            .ToArray(),
+
+                         History = x.WorkItemHistories
+                            .OrderBy(h => h.CreatedAt)
+                            .ThenBy(h => h.Id)
+                            .Select(h => new WorkItemHistoryDetail
+                            {
+                                FromStatus = h.FromStatus,
+                                ToStatus = h.ToStatus,
+                                Note = h.Note,
+                                Changeby = h.ChangedBy,
+                                CreatedAt = h.CreatedAt
+                            })
+                            .ToArray()
+                    }  
+                )
+                .FirstOrDefaultAsync();
+
+            if (res == null) throw new Exception($"Id: {id} khong ton tai");
+
+            return res;
+
+        }
+
+        public async Task AssignTasks(int id, ParameterItem parameterItem)
+        {
+            var workItem = await _context.WorkItems.FirstOrDefaultAsync(x => x.Id == id && x.IsDeleted == false);
+
+            if (workItem == null) throw new Exception("Work Item này đã bị xóa. Vui lòng phân công cho Work Item khác");
+
+            if (workItem.Status == EnumName.Done.ToString() && workItem.Status == EnumName.Done.ToString())
             {
-                Id = findWordItem.Id,
-                Code = findWordItem.Code,
-                Title = findWordItem.Title,
-                Description = findWordItem.Description,
-                Status = findWordItem.Status,
-                Priority = findWordItem.Priority,
-                DueAt = findWordItem.DueAt,
-                CreatedAt = findWordItem.CreatedAt,
-                UpdatedAt = findWordItem.UpdatedAt,
-                CompletedAt = findWordItem.CompletedAt
-            };
+                throw new Exception($"Không thể giao việc cho Work Item có trạng thái HỦY/HOÀN THÀNH");
+            }
 
-            //var proj = new ProjectDetail()
-            //{
-            //    Code = findWordItem.Project.Code,
-            //    Name = findWordItem.Project.Name
-            //};
+            Developer? devExsists = null;
 
-            //var dev = new DeveloperDetail()
-            //{
-            //    Id = findWordItem.Assignee.Id,
-            //    FullName = findWordItem.Assignee.FullName,
-            //    Code = findWordItem.Assignee.Code
-            //};
-
-            //var labelArr = findWordItem.Labels
-            //    .OrderBy(x => x.Name).ToArray()
-            //    .Select(x => x.Name).ToArray();
-
-            //var hisArr = findWordItem.WorkItemHistories
-            //    .Select(
-            //        x => new WorkItemHistoryDetail()
-            //        {
-            //            FromStatus = x.FromStatus,
-            //            ToStatus = x.ToStatus,
-            //            Note = x.Note,
-            //            Changeby = x.ChangedBy,
-            //            CreatedAt = x.CreatedAt
-            //        }
-            //    )
-            //    .OrderBy(y => y.CreatedAt)
-            //    .ThenBy(y => y.Id)
-            //    .ToArray();
-
-            WorkItemDetailDto workItemDetailDto = new WorkItemDetailDto()
+            if (parameterItem.AssigneeId.HasValue)
             {
-                Item = item,
-                //Project = proj,
-                //Assignee = dev,
-                //Labels = labelArr,
-                //History = hisArr
-            };
+                devExsists = await _context.Developers
+                    .FirstOrDefaultAsync(x =>
+                        x.Id == parameterItem.AssigneeId.Value &&
+                        x.IsActive);
+
+                if (devExsists == null)
+                {
+                    throw new Exception(
+                        $"Assignee Id: {parameterItem.AssigneeId} không tồn tại hoặc không active");
+                }
+            }
 
 
-            return workItemDetailDto;
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
+            try
+            {
+                workItem.AssigneeId = parameterItem.AssigneeId;
+                workItem.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                var history = new WorkItemHistory()
+                {
+                    WorkItemId = workItem.Id,
+                    FromStatus = workItem.Status,
+                    ToStatus = workItem.Status,
+                    ChangedBy = devExsists.Code,
+                    Note = string.IsNullOrWhiteSpace(parameterItem.Note) ? null : parameterItem.Note,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.WorkItemHistories.Add(history);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
     }
 }

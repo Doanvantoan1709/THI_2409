@@ -28,7 +28,7 @@ namespace DETHI_2409.Controllers
                 {
                     TraceId = HttpContext.TraceIdentifier,
                     Status = 200,
-                    Message = "Lấy báo cáo project thành công",
+                    Message = "Thành công",
                     Data = data
                 };
 

@@ -1,4 +1,5 @@
-﻿using DETHI_2409.Entities;
+﻿using DETHI_2409.DTOs;
+using DETHI_2409.Entities;
 using DETHI_2409.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,17 +14,23 @@ namespace DETHI_2409.Services.Implementations
             _context = context;
         }
 
-        public bool HealthCheckDB()
+        public async Task<HealthDto> HealthCheckDB()
         {
+            var res = new HealthDto();
             try
             {
-                _context.Database.OpenConnection();
-                _context.Database.CloseConnection();
-                return true;
+                await _context.Database.OpenConnectionAsync();
+                await _context.Database.CloseConnectionAsync();
+
+                res.Status = "ok";
+                res.DbConnected = true;
+                return res;
             }
-            catch (Exception ex)
+            catch
             {
-                return false;
+                res.Status = "unavailable";
+                res.DbConnected = false;
+                return res;
             }
         }
     }

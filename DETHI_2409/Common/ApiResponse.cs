@@ -1,6 +1,6 @@
 ﻿namespace DETHI_2409.Common
 {
-    public class ResponseSuccess<T>
+    public class Response<T>
     {
         public string? TraceId { get; set; }
         public int Status { get; set; }
@@ -24,7 +24,7 @@
         public T[]? Data { get; set; }
     }
 
-    public class ResponseError<T>
+    public class ResponseError
     {
         public string? TraceId { get; set; }
         public int Status { get; set; }

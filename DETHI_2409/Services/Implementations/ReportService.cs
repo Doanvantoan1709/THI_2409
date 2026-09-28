@@ -40,10 +40,7 @@ namespace DETHI_2409.Services.Implementations
 
             if (parameterProject.To.HasValue)
             {
-                var toExclusive = parameterProject.To.Value
-                    .AddDays(1)
-                    .ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-
+                var toExclusive = parameterProject.To.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
                 query = query.Where(x => x.workItem == null || x.workItem.CreatedAt < toExclusive);
             }
 
@@ -83,19 +80,7 @@ namespace DETHI_2409.Services.Implementations
                 )
                 .Where(x => x.TotalItems >= parameterProject.MinItems)
                 .OrderBy(x => x.ProjectCode)
-                .Select(x => new ReportProject
-                {
-                    ProjectCode = x.ProjectCode,
-                    ProjectName = x.ProjectName,
-                    TotalItems = x.TotalItems,
-                    OpenItems = x.OpenItems,
-                    OverDueItems = x.OverDueItems,
-                    DoneItems = x.DoneItems,
-                    AverageCompletionHours = x.AverageCompletionHours
-                })
-                .OrderBy(x => x.ProjectCode)
                 .ToListAsync();
-
 
             return rp;
         }

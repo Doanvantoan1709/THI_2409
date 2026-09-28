@@ -1,4 +1,5 @@
 ﻿using DETHI_2409.Common;
+using DETHI_2409.DTOs;
 using DETHI_2409.Entities;
 using DETHI_2409.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
@@ -19,22 +20,37 @@ namespace DETHI_2409.Controllers
         }
 
         [HttpGet]
-        public ActionResult<bool> HealthCheckDB()
+        public async Task<ActionResult> HealthCheckDB()
         {
-            var hc = _healthService.HealthCheckDB();
-            if (hc == false)
+            try
             {
-                return NotFound(new
+                var data = await _healthService.HealthCheckDB();
+                if(data.DbConnected == true)
                 {
+                    var res = new Response<HealthDto>
+                    {
+                        TraceId = HttpContext.TraceIdentifier,
+                        Status = 200,
+                        Message = "Thành công",
+                        Data = data
+                    };
+                    return Ok(res);
+                }
+
+                var resErr = new Response<HealthDto>
+                {
+                    TraceId = HttpContext.TraceIdentifier,
                     Status = 503,
-                    Message = "unavailable"
-                });
+                    Message = "Thất bại",
+                    Data = data
+                };
+                return Ok(resErr);
+
             }
-            return Ok(new
+            catch(Exception ex)
             {
-                Status = 200,
-                Message = "Available"
-            });
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

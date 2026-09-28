@@ -32,11 +32,11 @@ namespace DETHI_2409.Controllers
             {
                 var getWordItems = await _workitemService.GetWorkItemsAsync(filter, paging, sort);
 
-                var res = new ResponseSuccess<WorkItemCustom>
+                var res = new Response<WorkItemCustom>
                 {
                     TraceId = HttpContext.TraceIdentifier,
                     Status = 200,
-                    Message = "Thanh cong",
+                    Message = "Thành công",
                     Data = getWordItems
                 };
 
@@ -55,11 +55,11 @@ namespace DETHI_2409.Controllers
             {
                 var getWorkItemDetail = await _workitemService.GetWorkItemDetailAsync(id);
 
-                var res = new ResponseSuccess<WorkItemDetailDto>
+                var res = new Response<WorkItemDetailDto>
                 {
                     TraceId = HttpContext.TraceIdentifier,
                     Status = 200,
-                    Message = "Thanh cong",
+                    Message = "Thành công",
                     Data = getWorkItemDetail
                 };
 
@@ -77,11 +77,13 @@ namespace DETHI_2409.Controllers
             try
             {
                 await _workitemService.DeleteWorkItemAsync(id);
-
-                return Ok(new
+                var res = new Response<object>
                 {
-                    message = "Xoa thanh cong"
-                });
+                    TraceId = HttpContext.TraceIdentifier,
+                    Status = 204,
+                    Message = "Thành công"
+                };
+                return Ok(res);
             }
             catch (Exception ex)
             {
@@ -95,11 +97,13 @@ namespace DETHI_2409.Controllers
             try
             {
                 await _workitemService.CreateWorkItemAsync(createWorkItem);
-
-                return Ok(new
+                var res = new Response<object>
                 {
-                    message = "Tao thanh cong"
-                });
+                    TraceId = HttpContext.TraceIdentifier,
+                    Status = 200,
+                    Message = "Thành công"
+                };
+                return Ok(res);
 
             } catch (Exception ex)
             {
@@ -113,10 +117,14 @@ namespace DETHI_2409.Controllers
             try
             {
                 await _workitemService.AssignTasks(id, parameterItem);
-                return Ok(new
+                var res = new Response<object>
                 {
-                    message = "Phân công hoàn tất"
-                });
+                    TraceId = HttpContext.TraceIdentifier,
+                    Status = 200,
+                    Message = "Thành công"
+                };
+
+                return Ok(res);
             }
             catch (Exception ex)
             {
@@ -136,7 +144,7 @@ namespace DETHI_2409.Controllers
                 {
                     TraceId = HttpContext.TraceIdentifier,
                     Status = 200,
-                    Message = "Thanh cong",
+                    Message = "Thành công",
                     Data = data
                 };
 
@@ -155,11 +163,11 @@ namespace DETHI_2409.Controllers
             {
                 var data = await _workitemService.WriteAndDisplayNoteAsync(id, note);
 
-                var res = new ResponseSuccess<HistoryDto>
+                var res = new Response<HistoryDto>
                 {
                     TraceId = HttpContext.TraceIdentifier,
                     Status = 200,
-                    Message = "Thanh cong",
+                    Message = "Thành công",
                     Data = data
                 };
 

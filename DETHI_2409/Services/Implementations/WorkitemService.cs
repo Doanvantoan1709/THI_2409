@@ -421,7 +421,7 @@ namespace DETHI_2409.Services.Implementations
                 _context.Add(history);
                 await _context.SaveChangesAsync();
 
-                workItem.UpdatedAt = DateTime.UtcNow;
+                workItem.UpdatedAt = history.CreatedAt;
                 await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync();

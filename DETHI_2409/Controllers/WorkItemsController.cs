@@ -3,8 +3,11 @@ using DETHI_2409.DTOs;
 using DETHI_2409.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Net.NetworkInformation;
 using static System.Net.WebRequestMethods;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace DETHI_2409.Controllers
 {
@@ -21,9 +24,9 @@ namespace DETHI_2409.Controllers
 
         [HttpGet]
         public async Task<ActionResult> GetWorkItemsAsync(
-            [FromQuery]FilterWorkItems filter, 
-            [FromQuery]PagingWorkItems paging, 
-            [FromQuery]SortWorkItems sort)
+            [FromQuery] FilterWorkItems filter,
+            [FromQuery] PagingWorkItems paging,
+            [FromQuery] SortWorkItems sort)
         {
             try
             {
@@ -39,7 +42,7 @@ namespace DETHI_2409.Controllers
 
                 return Ok(res);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return BadRequest(ex.Message);
             }
@@ -80,7 +83,7 @@ namespace DETHI_2409.Controllers
                     message = "Xoa thanh cong"
                 });
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return Conflict(ex.Message);
             }
@@ -98,7 +101,7 @@ namespace DETHI_2409.Controllers
                     message = "Tao thanh cong"
                 });
 
-            }catch(Exception ex)
+            } catch (Exception ex)
             {
                 return Conflict(ex.Message);
             }
@@ -114,6 +117,53 @@ namespace DETHI_2409.Controllers
                 {
                     message = "Phân công hoàn tất"
                 });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+
+        [HttpGet("{id}/history")]
+        public async Task<ActionResult> GetHistoryAsync(long id, DateTime? from, DateTime? to)
+        {
+            try
+            {
+                var data = await _workitemService.GetHistoryAsync(id, from, to);
+
+                var res = new ArrResponseSuccess<HistoryDto>
+                {
+                    TraceId = HttpContext.TraceIdentifier,
+                    Status = 200,
+                    Message = "Thanh cong",
+                    Data = data
+                };
+
+                return Ok(res);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("{id}/notes")]
+        public async Task<ActionResult> WriteAndDisplayNoteAsync(long id, [FromBody]NoteHistory note)
+        {
+            try
+            {
+                var data = await _workitemService.WriteAndDisplayNoteAsync(id, note);
+
+                var res = new ResponseSuccess<HistoryDto>
+                {
+                    TraceId = HttpContext.TraceIdentifier,
+                    Status = 200,
+                    Message = "Thanh cong",
+                    Data = data
+                };
+
+                return Ok(res);
             }
             catch(Exception ex)
             {

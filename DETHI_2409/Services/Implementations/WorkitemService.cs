@@ -3,6 +3,7 @@ using DETHI_2409.Entities;
 using DETHI_2409.Enums;
 using DETHI_2409.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.Net.NetworkInformation;
 
 namespace DETHI_2409.Services.Implementations
@@ -24,7 +25,7 @@ namespace DETHI_2409.Services.Implementations
                             on workItem.ProjectId equals project.Id
                         join developer in _context.Developers.AsQueryable()
                             on workItem.AssigneeId equals developer.Id into developers
-                                from developer in developers.DefaultIfEmpty()
+                        from developer in developers.DefaultIfEmpty()
                         select new
                         {
                             workItem,
@@ -61,7 +62,7 @@ namespace DETHI_2409.Services.Implementations
 
             if (filter.Overdue.HasValue == true)
             {
-                if(filter.Overdue == true)
+                if (filter.Overdue == true)
                 {
                     query = query.Where(x => x.workItem.DueAt < DateTime.UtcNow);
 
@@ -73,7 +74,7 @@ namespace DETHI_2409.Services.Implementations
             }
 
             // Paging
-                if (paging.Page <= 0 || paging.PageSize <= 0) throw new Exception("Page, PageSize khong nho hon 0");
+            if (paging.Page <= 0 || paging.PageSize <= 0) throw new Exception("Page, PageSize khong nho hon 0");
             query = query
                 .Skip((paging.Page - 1) * paging.PageSize)
                 .Take(paging.PageSize);
@@ -261,12 +262,12 @@ namespace DETHI_2409.Services.Implementations
                                 Code = x.Assignee.Code
                             },
 
-                         Labels = x.Labels
+                        Labels = x.Labels
                             .OrderBy(l => l.Name)
                             .Select(l => l.Name)
                             .ToArray(),
 
-                         History = x.WorkItemHistories
+                        History = x.WorkItemHistories
                             .OrderBy(h => h.CreatedAt)
                             .ThenBy(h => h.Id)
                             .Select(h => new WorkItemHistoryDetail
@@ -278,7 +279,7 @@ namespace DETHI_2409.Services.Implementations
                                 CreatedAt = h.CreatedAt
                             })
                             .ToArray()
-                    }  
+                    }
                 )
                 .FirstOrDefaultAsync();
 
@@ -338,6 +339,104 @@ namespace DETHI_2409.Services.Implementations
                 await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        public async Task<HistoryDto[]> GetHistoryAsync(long id, DateTime? from, DateTime? to)
+        {
+            if (id < 1) throw new Exception("ID không nhỏ hơn 1");
+
+            var workItem = await _context.WorkItems
+                .Where(x => x.Id == id && x.IsDeleted == false)
+                .Select(x => new
+                {
+                    x.Id, x.IsDeleted
+                })
+                .FirstOrDefaultAsync();
+            if (workItem == null || workItem.IsDeleted == true) throw new Exception("Công việc không tồn tại hoặc đã bị xóa");
+
+            var history = await _context.WorkItemHistories
+                .Where(x => x.WorkItemId == workItem.Id)
+                .Select(
+                    x => new HistoryDto()
+                    {
+                        Id = x.Id,
+                        FromStatus = x.FromStatus,
+                        ToStatus = x.ToStatus,
+                        Note = x.Note,
+                        ChangedBy = x.ChangedBy,
+                        CreatedAt = x.CreatedAt.Date
+                    }
+                )
+                .OrderBy(x => x.CreatedAt)
+                .ThenBy(x => x.Id)
+                .ToArrayAsync();
+
+            if (from.HasValue && to.HasValue)
+            {
+                if (to < from)
+                {
+                    throw new Exception("from không được phép muộn hơn to");
+                }
+            }
+
+            if (from.HasValue)
+            {
+                history = history.Where(x => x.CreatedAt >= from).ToArray();
+            }
+
+            if (to.HasValue)
+            {
+                history = history.Where(x => x.CreatedAt <= to).ToArray();
+            }
+
+            return history;
+
+        }
+
+        public async Task<HistoryDto> WriteAndDisplayNoteAsync(long id, NoteHistory note)
+        {
+            var workItem = await _context.WorkItems.FirstOrDefaultAsync(x => x.Id == id && x.IsDeleted == false);
+            if (workItem == null || workItem.IsDeleted == true) throw new Exception("Không ghi chú cho công việc không tồn tại hoặc đã bị xóa");
+
+            if (string.IsNullOrEmpty(note.note)) throw new Exception("note phải là chuỗi và không được để trống");
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var history = new WorkItemHistory()
+                {
+                    WorkItemId = workItem.Id,
+                    FromStatus = workItem.Status,
+                    ToStatus = workItem.Status,
+                    Note = note.note.Trim(),
+                    ChangedBy = "api",
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Add(history);
+                await _context.SaveChangesAsync();
+
+                workItem.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                var res = new HistoryDto()
+                {
+                    Id = history.Id,
+                    FromStatus = history.FromStatus,
+                    ToStatus = history.ToStatus,
+                    Note = history.Note,
+                    ChangedBy = history.ChangedBy,
+                    CreatedAt = history.CreatedAt
+                };
+
+                return res;
             }
             catch
             {
